@@ -60,7 +60,7 @@ void detect_circles(Mat img, int canny_param = 20, int hough_param = 20) {
             140);
                                            
     outer_circle = {0, 0, 0};
-    if(circles !+= NULL){
+    if(circles != NULL){
         for(float circle : circles[0]) {
             outer_circle.push_back(round(circles));
             if ((abs(outer_circle[0] - inner_circle[0]) < 15) and (abs(outer_circle[1] - inner_circle[1]) < 15))
@@ -87,7 +87,8 @@ Mat detect_iris_frame(Mat frame) {
         iris_circle[2] = iris_circle[1];
     if (frame.shape[0] - iris_circle[1] < iris_circle[2])
         iris_circle[2] = frame.shape[0] - iris_circle[1];
-    iris_circle[2] = frame.shape[1] - iris_circle[0];
+    if (frame.shape[1] - iris_circle[0] < iris_circle[2])
+    	iris_circle[2] = frame.shape[1] - iris_circle[0];
 
     /*
        mask = cv.bitwise_not(
@@ -105,47 +106,31 @@ Mat detect_iris_frame(Mat frame) {
        line 94 ~ 98
      */
 
-    for(int i = iris_circle[1] - iris_circle[2] ; i < iris_circle[1] + iris_circle[2] ; ++i) {
-        for(int j = iris_circle[0] - iris_circle[2] ; j < iris_circle[0] + iris_circle[2] ; ++j) {
-            imgRet[a][b++] = iris_frame[i][j];
-        }
-        a++;
-        b = 0;
-    }
+    imgRet = iris_frame(
+    	Range(iris_circle[1] - iris_circle[2], 
+    		iris_circle[1] + iris_circle[2]),
+    	Range(iris_circle[0] - iris_circle[2], 
+    		iris_circle[0] + iris_circle[2]));
 
     return imgRet;
 }
 
 Mat getPolar2CartImg(Mat image, int rad) {
     Mat imgRes, Mat imgRet, int black_cnt = 0;
-    vector<int> vec;
     int a = 0, b = 0;
-
 
     Point2f c(float(image.cols)/2, float(image.rows)/2); 
     warpPolar(image, imgRes, Size(rad*3, 360), c, (image.rows/2), CV_WARP_POLAR_LOG);
                             
-    for(int i = 0 ; i < rad*3 ; ++i) {
-        vec.push_back(i);
-    }
-
-    reverse(vec.begin(), vec.end());
-
-    for(int v : vec) {
+    for(int v = rad*3-1 ; v >= 0 ; i--){
         black_cnt = 0;
-        for(int i = 0 ; i < 360 ; ++i){
-            if(imgRes[i][v] != 0){
+        for(int h = 0 ; h < 360 ; ++h){
+            if(imgRes.at<int>(h,v) != 0){
                 black_cnt++;
             }
         }
         if(black_cnt == 0) {
-            for(int j = 0 ; j < 360 ; ++j) {
-                for(int k = v ; k < rad*3 ; ++k) {
-                    imgRet[a][b++] = imgRes[j][k];
-                }                                                                                                                    
-                a++;  
-                b = 0;
-            }
+            imgRet = imgRes(Range(0, 360), Range(v, rad*3));
             break;
         }
     }
