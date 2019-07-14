@@ -53,7 +53,7 @@ void detect_circles(Mat img, int canny_param = 20, int hough_param = 20) {
     circle_frame = circle(img, Point(inner_circle[0], inner_circle[1]), 
             inner_circle[2], Scalar(0, 0, 0), FILLED);
 
-    HoughCircles(adjusted, circles, CV_HOUGH_GRADIENT, 1, 20, 
+    HoughCircles(adjusted, circles, HOUGH_GRADIENT, 1, 20, 
             canny_param, 
             hough_param, 
             inner_circle[2]+20,
@@ -96,7 +96,7 @@ Mat detect_iris_frame(Mat frame) {
        , (iris_circle[0], iris_circle[1]), iris_circle[2], (255,255,255), cv.FILLED))
      */
 
-    bitwise_not(circle())
+    // bitwise_not(circle())
 
 
         iris_frame = frame.clone();
@@ -107,22 +107,23 @@ Mat detect_iris_frame(Mat frame) {
      */
 
     imgRet = iris_frame(
-    	Range(iris_circle[1] - iris_circle[2], 
-    		iris_circle[1] + iris_circle[2]),
-    	Range(iris_circle[0] - iris_circle[2], 
-    		iris_circle[0] + iris_circle[2]));
+    	Range(iris_circle[1] - iris_circle[2],
+             iris_circle[1] + iris_circle[2]),
+    	Range(iris_circle[0] - iris_circle[2],
+             iris_circle[0] + iris_circle[2]));
 
     return imgRet;
 }
 
 Mat getPolar2CartImg(Mat image, int rad) {
-    Mat imgRes, Mat imgRet, int black_cnt = 0;
+    Mat imgRes, imgRet;
+    int black_cnt = 0;
     int a = 0, b = 0;
 
     Point2f c(float(image.cols)/2, float(image.rows)/2); 
-    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.rows/2), CV_WARP_POLAR_LOG);
+    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.rows/2), WARP_POLAR_LOG);
                             
-    for(int v = rad*3-1 ; v >= 0 ; i--){
+    for(int v = rad*3-1 ; v >= 0 ; v--){
         black_cnt = 0;
         for(int h = 0 ; h < 360 ; ++h){
             if(imgRes.at<int>(h,v) != 0){
@@ -135,7 +136,7 @@ Mat getPolar2CartImg(Mat image, int rad) {
         }
     }
 
-    resize(imgRet, imgRet, Size(80, 360), 0, 0, CV_INTER_CUBIC);
+    resize(imgRet, imgRet, Size(80, 360), 0, 0, INTER_CUBIC);
 
     return imgRet;
 }
