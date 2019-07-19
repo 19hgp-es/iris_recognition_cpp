@@ -2,11 +2,13 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 using namespace cv;
 using namespace std;
 
-vector<Vec3f> iris_circle = {0, 0, 0};
+
+int iris_circle[3] = {0, 0, 0};
 
 Mat bottom_hat_median_blurr(Mat image) {
     Mat cimg, kernel, blackhat, bottom_hat_filtered, imgRes;
@@ -34,95 +36,100 @@ Mat adjust_gamma(Mat image, float gamma = 1.0) {
     return imgRes;
 }
 
-void detect_circles(Mat img, int canny_param = 20, int hough_param = 20) {
+Mat detect_circles(Mat& img, int canny_param = 20, int hough_param = 20) {
     Mat filtered, adjusted;
-    vector<Vec3f> circles, outer_circle, circle_frame;
-    vector<Vec3i> inner_circle;
+    vector<Vec3f> circles;
+    int inner_circle[3], outer_circle[3];
 
     filtered = bottom_hat_median_blurr(img);
     adjusted = adjust_gamma(filtered, 10);
+   
+    adjusted.convertTo(adjusted, CV_8U);
+    cvtColor(adjusted, adjusted, COLOR_BGR2GRAY);
+    
     HoughCircles(adjusted, circles, HOUGH_GRADIENT, 1, 20, 
             canny_param, 
             hough_param, 
             20, 
             100);
+    
+    //inner_circle = {0, 0, 0};
+    inner_circle[0] = cvRound(circles[0][0]);
+    inner_circle[1] = cvRound(circles[0][1]);
+    inner_circle[2] = cvRound(circles[0][2]);
 
-    inner_circle = {0, 0, 0};
-    if(circles != NULL)  
-        inner_circle.push_back(round(circles[0][0]));
-    circle_frame = circle(img, Point(inner_circle[0], inner_circle[1]), 
-            inner_circle[2], Scalar(0, 0, 0), FILLED);
+    Point center = Point(inner_circle[0], inner_circle[1]);
+    
+    //circle return value error?
+    circle(img, center, inner_circle[2], Scalar(0, 0, 0), FILLED);
 
     HoughCircles(adjusted, circles, HOUGH_GRADIENT, 1, 20, 
             canny_param, 
             hough_param, 
             inner_circle[2]+20,
             140);
-                                           
-    outer_circle = {0, 0, 0};
-    if(circles != NULL){
-        for(float circle : circles[0]) {
-            outer_circle.push_back(round(circles));
-            if ((abs(outer_circle[0] - inner_circle[0]) < 15) and (abs(outer_circle[1] - inner_circle[1]) < 15))
+                             
+    /*    
+    try{
+        for(float circle : circles[0][0]) {
+            outer_circle = {round(circles[0][0]), round(circles[0][1]), round(circles[0][2])};
+            if ((abs(outer_circle[0][0] - inner_circle[0][0]) < 15) and (abs(outer_circle[0][1] - inner_circle[0][1]) < 15))
                 break;
         }
     }
-    else
-        outer_circle[2] = int(inner_circle[2] * 2.4);
+    */  
+    outer_circle[2] = int(inner_circle[2] * 2.4);
+
+    
     outer_circle[0] = inner_circle[0];
     outer_circle[1] = inner_circle[1];
 
-    iris_circle = outer_circle;
+    iris_circle[0] = outer_circle[0];
+    iris_circle[1] = outer_circle[1];
+    iris_circle[2] = outer_circle[2];
 
-    return circle_frame;
+    return img;
 }
 
 Mat detect_iris_frame(Mat frame) {
-    Mat iris_frame;
-    Mat imgRet;
-    int a = 0, b = 0;
+    Mat iris_frame, imgRet, mask;
     if (iris_circle[0] < iris_circle[2])
         iris_circle[2] = iris_circle[0];
     if (iris_circle[1] < iris_circle[2])
         iris_circle[2] = iris_circle[1];
-    if (frame.shape[0] - iris_circle[1] < iris_circle[2])
-        iris_circle[2] = frame.shape[0] - iris_circle[1];
-    if (frame.shape[1] - iris_circle[0] < iris_circle[2])
-    	iris_circle[2] = frame.shape[1] - iris_circle[0];
+    if (frame.rows - iris_circle[1] < iris_circle[2])
+        iris_circle[2] = frame.rows - iris_circle[1];
+    if (frame.cols - iris_circle[0] < iris_circle[2])
+    	iris_circle[2] = frame.cols - iris_circle[0];
 
-    /*
-       mask = cv.bitwise_not(
-       cv.circle(np.zeros((np.size(frame,0),np.size(frame,1),1), np.uint8)
-       , (iris_circle[0], iris_circle[1]), iris_circle[2], (255,255,255), cv.FILLED))
-     */
+    Mat m = Mat::zeros(Size(frame.cols, frame.rows), CV_8U);
+    Point p = Point(iris_circle[0], iris_circle[1]);
+    circle(m, p, iris_circle[2], Scalar(255, 255, 255), FILLED);
 
-    // bitwise_not(circle())
+    bitwise_not(m, mask);
 
+    iris_frame = frame.clone();
 
-        iris_frame = frame.clone();
-    subtract(frame, frame, iris_frame, mask, -1);
-
-    /*
-       line 94 ~ 98
-     */
-
+    subtract(frame, frame, iris_frame, mask);
+    
+    printf("%d", iris_circle[1] - iris_circle[2]);
     imgRet = iris_frame(
-    	Range(iris_circle[1] - iris_circle[2],
-             iris_circle[1] + iris_circle[2]),
-    	Range(iris_circle[0] - iris_circle[2],
-             iris_circle[0] + iris_circle[2]));
+    	Range((iris_circle[1] - iris_circle[2]), 
+            (iris_circle[1] + iris_circle[2])),
+    	Range((iris_circle[0] - iris_circle[2]), 
+            (iris_circle[0] + iris_circle[2])));
 
     return imgRet;
 }
 
 Mat getPolar2CartImg(Mat image, int rad) {
-    Mat imgRes, imgRet;
-    int black_cnt = 0;
-    int a = 0, b = 0;
+    Mat imgRes;
+    int black_cnt;
 
-    Point2f c(float(image.cols)/2, float(image.rows)/2); 
-    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.rows/2), WARP_POLAR_LOG);
-                            
+    Point2f c(float(image.cols)/2.0, float(image.rows)/2.0);                         
+    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.cols/2), WARP_POLAR_LOG);
+   
+    /*
     for(int v = rad*3-1 ; v >= 0 ; v--){
         black_cnt = 0;
         for(int h = 0 ; h < 360 ; ++h){
@@ -131,12 +138,29 @@ Mat getPolar2CartImg(Mat image, int rad) {
             }
         }
         if(black_cnt == 0) {
-            imgRet = imgRes(Range(0, 360), Range(v, rad*3));
+            imgRes = imgRes(Range(0, 360), Range(v, rad*3));
             break;
         }
     }
+    */
+    resize(imgRes, imgRes, Size(80, 360), 0, 0, INTER_CUBIC);
 
-    resize(imgRet, imgRet, Size(80, 360), 0, 0, INTER_CUBIC);
+    return imgRes;
+}
 
-    return imgRet;
+int main(int argc, char ** argv){
+    Mat image, circle, iris, norm_frame;
+    image = imread("S1001L01.jpg", 1);
+
+    circle = detect_circles(image, 20, 20);
+    iris = detect_iris_frame(circle);
+    norm_frame = getPolar2CartImg(iris, iris_circle[2]);
+   
+    //imshow("Detect Circle", circle);
+    //imshow("detect_iris_frame", iris);
+    imshow("norm_frame", norm_frame);
+
+    waitKey(0);
+
+    return 0;
 }
