@@ -1,12 +1,7 @@
 #include <opencv2/opencv.hpp>
-#include <cmath>
-#include <vector>
-#include <algorithm>
-#include <iostream>
 
 using namespace cv;
 using namespace std;
-
 
 int iris_circle[3] = {0, 0, 0};
 
@@ -30,7 +25,7 @@ Mat adjust_gamma(Mat image, float gamma = 1.0) {
 
     for(int i = 0 ; i < 256 ; i++) 
         table.push_back(int(pow((float(i)/255), inv_gamma) * 255));
-
+    
     LUT(image, table, imgRes);
 
     return imgRes;
@@ -46,7 +41,6 @@ Mat detect_circles(Mat& img, int canny_param = 20, int hough_param = 20) {
    
     adjusted.convertTo(adjusted, CV_8U);
     cvtColor(adjusted, adjusted, COLOR_BGR2GRAY);
-    
     HoughCircles(adjusted, circles, HOUGH_GRADIENT, 1, 20, 
             canny_param, 
             hough_param, 
@@ -59,10 +53,7 @@ Mat detect_circles(Mat& img, int canny_param = 20, int hough_param = 20) {
     inner_circle[2] = cvRound(circles[0][2]);
 
     Point center = Point(inner_circle[0], inner_circle[1]);
-    
-    //circle return value error?
     circle(img, center, inner_circle[2], Scalar(0, 0, 0), FILLED);
-
     HoughCircles(adjusted, circles, HOUGH_GRADIENT, 1, 20, 
             canny_param, 
             hough_param, 
@@ -92,7 +83,7 @@ Mat detect_circles(Mat& img, int canny_param = 20, int hough_param = 20) {
 }
 
 Mat detect_iris_frame(Mat frame) {
-    Mat iris_frame, imgRet, mask;
+    Mat iris_frame, mask;
     if (iris_circle[0] < iris_circle[2])
         iris_circle[2] = iris_circle[0];
     if (iris_circle[1] < iris_circle[2])
@@ -107,33 +98,31 @@ Mat detect_iris_frame(Mat frame) {
     circle(m, p, iris_circle[2], Scalar(255, 255, 255), FILLED);
 
     bitwise_not(m, mask);
-
     iris_frame = frame.clone();
-
     subtract(frame, frame, iris_frame, mask);
-    
-    printf("%d", iris_circle[1] - iris_circle[2]);
-    imgRet = iris_frame(
+
+    iris_frame = iris_frame(
     	Range((iris_circle[1] - iris_circle[2]), 
             (iris_circle[1] + iris_circle[2])),
     	Range((iris_circle[0] - iris_circle[2]), 
             (iris_circle[0] + iris_circle[2])));
 
-    return imgRet;
+    return iris_frame;
 }
 
 Mat getPolar2CartImg(Mat image, int rad) {
     Mat imgRes;
-    int black_cnt;
 
     Point2f c(float(image.cols)/2.0, float(image.rows)/2.0);                         
-    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.cols/2), WARP_POLAR_LOG);
-   
-    /*
+    warpPolar(image, imgRes, Size(rad*3, 360), c, (image.cols/2)
+            , WARP_POLAR_LOG);
+    
+    cvtColor(imgRes, imgRes, COLOR_BGR2GRAY);
+    
     for(int v = rad*3-1 ; v >= 0 ; v--){
-        black_cnt = 0;
-        for(int h = 0 ; h < 360 ; ++h){
-            if(imgRes.at<int>(h,v) != 0){
+        int black_cnt = 0;
+        for(int h = 0 ; h < 360 ; h++){
+            if(imgRes.at<uchar>(h, v) != 0){
                 black_cnt++;
             }
         }
@@ -142,7 +131,7 @@ Mat getPolar2CartImg(Mat image, int rad) {
             break;
         }
     }
-    */
+
     resize(imgRes, imgRes, Size(80, 360), 0, 0, INTER_CUBIC);
 
     return imgRes;
@@ -150,7 +139,7 @@ Mat getPolar2CartImg(Mat image, int rad) {
 
 int main(int argc, char ** argv){
     Mat image, circle, iris, norm_frame;
-    image = imread("S1001L01.jpg", 1);
+    image = imread("S1001L03.jpg", 1);
 
     circle = detect_circles(image, 20, 20);
     iris = detect_iris_frame(circle);
