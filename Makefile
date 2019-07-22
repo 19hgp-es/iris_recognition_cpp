@@ -1,4 +1,3 @@
-
 CC = g++
 
 OBJ = 
@@ -9,10 +8,12 @@ CFLAGS = -I `pkg-config --cflags opencv4`
 
 CLIBS = -L `pkg-config --libs opencv4`
 
-test: iris_recognition.cpp
+iris: iris_recognition.cpp
 	$(CC) -o DisplayImage iris_recognition.cpp $(VERSION) $(CFLAGS) $(CLIBS)
 
 clean:
 	rm DisplayImage
 
-all: test
+all: iris
+
+
