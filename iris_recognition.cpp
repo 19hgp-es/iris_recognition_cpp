@@ -19,12 +19,12 @@ Mat bottom_hat_median_blurr(Mat image) {
 }
 
 Mat adjust_gamma(Mat image, float gamma = 1.0) {
-    float inv_gamma; Mat imgRes; vector<int> table;
+    float inv_gamma; Mat imgRes; vector<int> table(256);
 
     inv_gamma = 1.0 / gamma;
 
     for(int i = 0 ; i < 256 ; i++) 
-        table.push_back(int(pow((float(i)/255), inv_gamma) * 255));
+        table[i] = (int(pow((float(i)/255), inv_gamma) * 255));
     
     LUT(image, table, imgRes);
 

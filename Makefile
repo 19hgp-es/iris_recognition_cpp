@@ -1,4 +1,4 @@
-all: iris test
+all: iris
 
 CC = g++
 
