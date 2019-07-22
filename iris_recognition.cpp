@@ -1,7 +1,15 @@
 #include <opencv2/opencv.hpp>
+#include <stdio.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <string.h>
+#include <unistd.h>
+#include <list>
 
 using namespace cv;
 using namespace std;
+
+list<string> imgPath;
 
 int iris_circle[3] = {0, 0, 0};
 
@@ -137,19 +145,60 @@ Mat getPolar2CartImg(Mat image, int rad) {
     return imgRes;
 }
 
+void listdir(const char *name, int indent)
+{
+	DIR *dir;
+	struct dirent *entry;
+			    
+	if (!(dir = opendir(name)))
+		return;
+    while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_type == DT_DIR) {           
+			char path[1024] = "";          
+			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)	
+				continue;								            
+			snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+			//printf("%*s[%s]\n", indent, "", entry->d_name);				            
+			listdir(path, indent + 2);
+		} else {
+			char totalPath[1024] = "";
+			snprintf(totalPath, sizeof(totalPath), "%s/%s\n", name, entry->d_name);
+			imgPath.push_back(totalPath);
+		}
+	}
+	closedir(dir);
+}
+
 int main(int argc, char ** argv){
     Mat image, circle, iris, norm_frame;
-    image = imread("S1001L03.jpg", 1);
+	FILE *fp = fopen("imagePath.txt", "r");
+	
+	while( !feof(fp) ){
+		char strtmp[1024];
+		char *pStr;
+		
+		pStr = fgets( strtmp, sizeof(strtmp), fp );
+		strtmp[strlen(strtmp) - 1] = '\0';
+		printf("%s\n", strtmp);
+		
+		image = imread(strtmp, 1);
 
-    circle = detect_circles(image, 20, 20);
-    iris = detect_iris_frame(circle);
-    norm_frame = getPolar2CartImg(iris, iris_circle[2]);
+		circle = detect_circles(image, 20, 20);
+		iris = detect_iris_frame(circle);
+		norm_frame = getPolar2CartImg(iris, iris_circle[2]);
    
-    //imshow("Detect Circle", circle);
-    //imshow("detect_iris_frame", iris);
-    imshow("norm_frame", norm_frame);
-
-    waitKey(0);
-
+		//imshow("Detect Circle", circle);
+		//imshow("detect_iris_frame", iris);
+		imshow("norm_frame", norm_frame);
+		waitKey(1000);
+		destroyWindow("norm_frame");
+		
+		char *filename = strrchr(strtmp, '/');
+		char writePath[1024] = "/root/opencv/images/normalizedIris";
+		strcat(writePath, filename);
+		printf("%s\n", writePath);
+		imwrite(writePath,norm_frame);
+	}
+	fclose(fp);
     return 0;
 }
