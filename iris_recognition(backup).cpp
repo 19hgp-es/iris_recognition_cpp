@@ -13,10 +13,6 @@ list<string> imgPath;
 
 int iris_circle[3] = {0, 0, 0};
 
-static void on_trackbar(int, void*){
-
-}
-
 Mat bottom_hat_median_blurr(Mat image) {
     Mat cimg, kernel, blackhat, bottom_hat_filtered, imgRes;
 
@@ -208,58 +204,8 @@ void listdir(const char *name, int indent)
 	closedir(dir);
 }
 
-Mat makegray(Mat &src){
-    Mat ret = src.clone();
-    int sum = 0;
-    cout << "cols : " << ret.cols << " rows : " << ret.rows;
-    for(int i = 0 ; i < ret.rows ; i++){
-        for(int j = 0 ; j < ret.cols ; j++){
-            if(ret.at<uchar>(i, j) >= 127)
-                ret.at<uchar>(i, j) = 127;
-        }
-    }
-    return ret;
-}
-
-void draw_new_circles(Mat &src, Mat &dst, int p1, int p2){
-    Mat temp;
-    dst = src.clone();
-    vector<Vec3f> circles;
-    vector<Point> p;
-    vector<int> rad;
-    int new_circle[3] = {0, 0, 0};
-
-    Canny(src, temp, p1, p2);
-    HoughCircles(temp, circles, HOUGH_GRADIENT, 1, 40, 20, 10, 100);
-    
-    if(circles.size() != 0){
-        int cnt = 0;
-        for(auto circle : circles){
-            new_circle[0] = cvRound(circle[0]);
-            new_circle[1] = cvRound(circle[1]);
-            new_circle[2] = cvRound(circle[2]);
-
-            // cout << new_circle[0] << " " << new_circle[1] << " " << new_circle[2] << endl;
-            Point center = Point(new_circle[0], new_circle[1]);
-            p.push_back(center);
-            rad.push_back(new_circle[2]);
-        }
-        for(int i = 0 ; i < circles.size() ; i++){
-            // if(p[i].x >= src.cols and p[i].y - rad[i] > 0 and p[i].y + rad[i] < src.rows){
-                circle(dst, p[i], rad[i], Scalar(0, 0, 255), 2);
-                // cnt++;
-            // }
-        }
-        cout << "circles.size() : " << cnt << endl;
-    }
-    else{
-        cout << "no circle detected!\n";
-    }
-}
-
 int main(int argc, char ** argv){
-    Mat image, temp_image, d_circle, iris, norm_frame, norm_canny, temp_norm_frame;
-    Mat test;
+    Mat image, temp_image, d_circle, iris, norm_frame, norm_canny;
 	FILE *fp = fopen("imagePath.txt", "r");
 	
     int cnt = 1;
@@ -276,72 +222,68 @@ int main(int argc, char ** argv){
 		d_circle = detect_circles(temp_image);
 		iris = detect_iris_frame(d_circle);
 		norm_frame = getPolar2CartImg(iris, iris_circle[2]);
-
-        imshow("norm_frame", norm_frame);
+        Canny(norm_frame, norm_canny, 100, 300, 3);
         
-        // draw_new_circles(norm_frame, test, 10, 200);
-        // imshow("find circle?", test);
-        // test = makegray(norm_frame);
-        // imshow("norm_frame", test);
+        vector<Vec3f> circles;
+        HoughCircles(norm_canny, circles, HOUGH_GRADIENT, 1, 20, 
+                        20, 20, 10, 140);
+        // HoughCircles(norm_canny, circles, HOUGH_GRADIENT, 1, 20, 
+        //                 20, 20, 10, 140);
 
-        waitKey(100000);
-        // namedWindow("Canny");
+        int new_circle[3] = {0, 0, 0};
 
-        // createTrackbar("low threshold", "Canny", 0, 1000, on_trackbar);
-        // createTrackbar("high threshold", "Canny", 0, 1000, on_trackbar);
+        vector<Point> p;
+        vector<int> rad;
 
-        // setTrackbarPos("low threshold", "Canny", 50);
-        // setTrackbarPos("high threshold", "Canny", 150);
+        if(circles.size() != 0){
+            cout << "circles.size() : " << circles.size() << endl;
+            for(auto circle : circles){
+                new_circle[0] = cvRound(circle[0]);
+                new_circle[1] = cvRound(circle[1]);
+                new_circle[2] = cvRound(circle[2]);
+
+                cout << new_circle[0] << " " << new_circle[1] << " " << new_circle[2] << endl;
+                Point center = Point(new_circle[0], new_circle[1]);
+                p.push_back(center);
+                rad.push_back(new_circle[2]);
+            }
+            for(int i = 0 ; i < circles.size() ; i++){
+                circle(norm_frame, p[i], rad[i], Scalar(0, 0, 255), FILLED);
+            }
+        }
+        // circle(image, Point(5,5), 2, Scalar(0, 0, 0), FILLED);
+        // circle(img, center, inner_circle[2], Scalar(0, 0, 0), FILLED);
+
+        imshow("input", image);
+		// imshow("circle", d_circle);
+		// imshow("iris", iris);
+		imshow("normalized", norm_frame);
+        imshow("norm_canny", norm_canny);
 
 
 
-        // while(1){
-        //     temp_norm_frame = norm_frame.clone();
-        //     int low = getTrackbarPos("low threshold", "Canny");
-        //     int high = getTrackbarPos("high threshold", "Canny");
-
-        //     Canny(norm_frame, norm_canny, low, high);
-
-        //     vector<Vec3f> circles;
-        //     vector<Point> p;
-        //     vector<int> rad;
-
-        //     HoughCircles(norm_canny, circles, HOUGH_GRADIENT, 1, 20, 20, 20, 140);
 
 
-        //     int new_circle[3] = {0, 0, 0};
-        //     if(circles.size() != 0){
-        //         cout << "circles.size() : " << circles.size() << endl;
-        //         for(auto circle : circles){
-        //             new_circle[0] = cvRound(circle[0]);
-        //             new_circle[1] = cvRound(circle[1]);
-        //             new_circle[2] = cvRound(circle[2]);
 
-        //             cout << new_circle[0] << " " << new_circle[1] << " " << new_circle[2] << endl;
-        //             Point center = Point(new_circle[0], new_circle[1]);
-        //             p.push_back(center);
-        //             rad.push_back(new_circle[2]);
-        //         }
-        //         for(int i = 0 ; i < circles.size() ; i++){
-        //             circle(temp_norm_frame, p[i], rad[i], Scalar(0, 0, 255), 2);
-        //         }
 
-        //     }
-        //     else{
-        //         cout << "no circle detected!\n";
-        //     }
-        //     cout << "low : " << low << "\n";
-        //     cout << "high : " << high << "\n";
-        //     imshow("temp_norm_frame", temp_norm_frame);
-        //     imshow("norm_frame", norm_frame);
-        //     imshow("Canny", norm_canny);
-        //     moveWindow("temp_norm_frame", 0, 0);
-        //     moveWindow("norm_frame", 150, 0);
-        //     moveWindow("Canny", 300, 0);
 
-        //     if(waitKey(1) == 27)
-        //         break;
-        // }
+        moveWindow("input", 0, 0);
+        moveWindow("circle", 480, 0);
+        moveWindow("iris", 0, 320);
+        // moveWindow("normalized", 480, 320);
+        // moveWindow("norm_canny", 960, 0);
+
+		waitKey(100000);
+		destroyWindow("normalized");
+		
+		char *filename = strrchr(strtmp, '/');
+		char writePath[1024] = "/Users/leejonguk/Desktop/grad_proj/iris_recognition_cpp/output";
+		strcat(writePath, filename);
+		// printf("%s\n", writePath);
+        printf("%d번째 사진\n", cnt++);
+		// imwrite(writePath,circle);
+		// imwrite(writePath,iris);
+		// imwrite(writePath,norm_frame);
 	}
 	fclose(fp);
     return 0;
